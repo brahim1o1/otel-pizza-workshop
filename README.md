@@ -1,8 +1,9 @@
 # OpenTelemetry Pizza Workshop
 
 A small pizza-ordering app built from three Node services and a web frontend.
-It ships with no instrumentation. Adding that is the workshop; this file only
-covers getting the app running.
+The three Node services report traces, metrics and logs to Dash0 through
+OpenTelemetry's zero-code instrumentation — see
+[Sending telemetry to Dash0](#sending-telemetry-to-dash0) below.
 
 ## Prerequisites
 
@@ -30,10 +31,40 @@ git remote add upstream https://github.com/dash0-community/otel-pizza-workshop.g
 git remote -v
 ```
 
-## Run it
+## Sending telemetry to Dash0
+
+The services read their Dash0 credentials from `pizza-app/.env`. Create it
+before the first run:
 
 ```bash
 cd pizza-app
+cp .env.template .env
+```
+
+Then edit `.env` and set:
+
+- `DASH0_AUTH_TOKEN` — from **Settings → Auth Tokens** in Dash0
+- `DASH0_ENDPOINT` — the ingress endpoint for your region, listed in the template
+
+`.env` is gitignored, so your token stays out of the repository. Compose
+refuses to start without both values rather than running blind.
+
+No tracing code was added to the services. Each one starts with
+`node --require @opentelemetry/auto-instrumentations-node/register`, which
+instruments Express, the HTTP client and Pino before the app loads, and every
+other setting is an `OTEL_*` environment variable in `docker-compose.yml`.
+
+What arrives in Dash0:
+
+| Signal | Comes from |
+|---|---|
+| Traces | One trace per order, spanning all three services. Trace context rides the `traceparent` header between them, so a failing order shows the whole chain. |
+| Logs | Existing Pino `logger.*` calls, each stamped with the trace and span it happened in |
+| Metrics | HTTP server and client request durations, Node event-loop delay, V8 heap |
+
+## Run it
+
+```bash
 docker compose up
 ```
 
@@ -81,6 +112,15 @@ NO_DRIVERS=true docker compose up     # nobody is available to deliver
 
 **Changed a file and nothing happened** — the services are baked into images.
 Rebuild: `docker compose up -d --build`.
+
+**Compose won't start, complains about `DASH0_ENDPOINT` or `DASH0_AUTH_TOKEN`** —
+`pizza-app/.env` is missing or incomplete. See
+[Sending telemetry to Dash0](#sending-telemetry-to-dash0).
+
+**Nothing shows up in Dash0** — set `OTEL_LOG_LEVEL=debug` in `pizza-app/.env`
+and restart; the SDK then logs what it is exporting and any rejection it gets
+back. Check the token's permissions allow ingesting, and that `DASH0_ENDPOINT`
+matches your region.
 
 **Build fails** — `docker compose build --no-cache`, and check the JSON in any
 `package.json` you edited.

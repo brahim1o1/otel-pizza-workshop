@@ -27,6 +27,14 @@ A pizza ordering system built from three microservices and a web frontend.
 
 ## Running the App
 
+Create `.env` from the template first — the services will not start without
+Dash0 credentials in it:
+
+```bash
+cp .env.template .env
+# then fill in DASH0_AUTH_TOKEN and DASH0_ENDPOINT
+```
+
 ```bash
 docker compose up
 ```
@@ -54,6 +62,12 @@ One service on its own:
 ```bash
 docker compose logs -f kitchen-service
 ```
+
+The same logs also go to Dash0, alongside a trace per order and HTTP and
+runtime metrics. Each log line there is attached to the span it was written in,
+so an order can be followed across all three services from either end. The
+root README covers the setup under
+[Sending telemetry to Dash0](../README.md#sending-telemetry-to-dash0).
 
 ## Failure Modes You Can Switch On
 
