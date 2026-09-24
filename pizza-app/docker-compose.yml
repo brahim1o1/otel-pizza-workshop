@@ -8,14 +8,24 @@
 #
 # An `.env` anywhere else (the repo root, for example) is NOT read.
 
+x-otel-env: &otel-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${DASH0_ENDPOINT:?missing - copy .env.template to pizza-app/.env and fill it in}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${DASH0_OTLP_PROTOCOL:-grpc}
+  OTEL_EXPORTER_OTLP_HEADERS: Authorization=Bearer ${DASH0_AUTH_TOKEN:?missing - copy .env.template to pizza-app/.env and fill it in}
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=pizza-app,deployment.environment.name=${DASH0_ENVIRONMENT:-workshop},vcs.repository.url.full=${VCS_REPOSITORY_URL:-https://github.com/brahim1o1/otel-pizza-workshop}
+  OTEL_NODE_RESOURCE_DETECTORS: env,host,os,process,serviceinstance,container
+  OTEL_LOG_LEVEL: ${OTEL_LOG_LEVEL:-info}
+
 services:
   order-service:
     build: ./order-service
     ports:
       - "3000:3000"
     environment:
-      - KITCHEN_SERVICE_URL=http://kitchen-service:3001
-      - DELIVERY_SERVICE_URL=http://delivery-service:3002
+      <<: *otel-env
+      OTEL_SERVICE_NAME: order-service
+      KITCHEN_SERVICE_URL: http://kitchen-service:3001
+      DELIVERY_SERVICE_URL: http://delivery-service:3002
     healthcheck:
       test:
         - CMD
@@ -37,7 +47,9 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - SLOW_KITCHEN=${SLOW_KITCHEN:-false}
+      <<: *otel-env
+      OTEL_SERVICE_NAME: kitchen-service
+      SLOW_KITCHEN: ${SLOW_KITCHEN:-false}
     healthcheck:
       test:
         - CMD
@@ -54,7 +66,9 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - NO_DRIVERS=${NO_DRIVERS:-false}
+      <<: *otel-env
+      OTEL_SERVICE_NAME: delivery-service
+      NO_DRIVERS: ${NO_DRIVERS:-false}
     healthcheck:
       test:
         - CMD
