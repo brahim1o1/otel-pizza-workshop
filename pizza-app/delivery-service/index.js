@@ -29,7 +29,7 @@ const drivers = [
 const SIZE_RANK = {
   Small: 1,
   Medium: 2,
-  large: 3
+  Large: 3
 };
 
 // Find nearest available driver whose bag fits this pizza
@@ -59,6 +59,16 @@ app.post('/assign-driver', async (req, res) => {
   const { orderId, customerName, size } = req.body;
   
   logger.info({ orderId, customerName, size }, 'Assigning driver');
+  
+  if (SIZE_RANK[size] === undefined) {
+    logger.warn({ orderId, size, knownSizes: Object.keys(SIZE_RANK) }, 'Unknown pizza size');
+    return res.status(400).json({
+      error: 'Unknown pizza size',
+      orderId,
+      size,
+      message: `Pizza size must be one of: ${Object.keys(SIZE_RANK).join(', ')}.`
+    });
+  }
   
   // Find nearest driver
   const driver = await findNearestDriver(size);
